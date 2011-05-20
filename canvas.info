@@ -1,0 +1,7 @@
+; $Id$
+name = Canvas
+description = "API for Facebook Canvas pages."
+package = Content 
+version = 0.1
+core = 7.x
+files[] = canvas.module
