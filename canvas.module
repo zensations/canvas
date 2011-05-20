@@ -6,21 +6,39 @@ function canvas_menu() {
   $items = array();
   $items['canvas/%/like'] = array(
     'page callback' => 'canvas_like',
-    'page arguments' => array(1),
     'access callback' => TRUE,
-    'access arguments' => array(1),
+  );
+  $items['canvas/%/oauth'] = array(
+    'page callback' => 'canvas_oauth',
+    'access callback' => TRUE,
   );
   return $items;
 }
 
 /**
+ * Implements hook_theme().
+ */
+function canvas_theme() {
+  return array(
+    'canvas_like' => array(
+      'template' => 'canvas_like',
+    ),
+  );
+}
+
+/**
+ * Redirect to oauth dialog.
+ */
+function canvas_oauth() {
+  $facebook = canvas_api();
+  return "<p>" . $facebook->getLoginUrl(). "</p>";
+}
+
+/**
  * Page Callback for Like Requests.
  */
-function canvas_like($app) {
-  $facebook = social_facebook_initialize($app);
-  if (!$facebook) {
-    return '<p>Invalid Application</p>';
-  }
+function canvas_like() {
+  $facebook = canvas_api();
   $content = array();
   try {
     $sr = $facebook->getSignedRequest();
@@ -48,16 +66,14 @@ function canvas_like($app) {
       if (array_key_exists('next', $_REQUEST)) {
         drupal_add_js('jQuery(document).ready(function () {
           FB.Event.subscribe("edge.create", function(response) {
-            top.location.href = "' . $page_url . '?sk=app_' . $facebook->my_appid . '";
+            top.location.href = "' . $page_url . '?sk=app_' . $facebook->appid . '";
           });
         });', array('type' => 'inline', 'scope' => 'footer', 'weight' => 5));
       }
     }
   }
-  drupal_alter('social_facebook_like', $content);
-  return $content;
+  return theme('canvas_like', $content);
 }
-
 
 /**
  * Return all implemented Facebook Apps.
@@ -83,10 +99,12 @@ function canvas_init() {
       ));
     }
   }
-  $facebook = social_facebook_initialize();
+  $facebook = canvas_api();
   if ($facebook) {
-    drupal_add_js(array('canvas' => array('appid' => $facebook->my_appid)), 'setting');
-    drupal_add_js('https://connect.facebook.net/en_US/all.js', array('type' => 'external'));
+    drupal_add_js('https://connect.facebook.net/' . $facebook->language . '/all.js', array('type' => 'external'));
+    drupal_add_js(drupal_get_path('module', 'canvas') . '/canvas.js');
+    drupal_add_css(drupal_get_path('module', 'canvas') . '/canvas.css');
+    drupal_add_js(array('canvas' => array('appid' => $facebook->appid)), 'setting');
   }
 }
 
@@ -97,6 +115,9 @@ function canvas_api($app = FALSE) {
   if (!$app) {
     $app = arg(0);
   }
+  if ($app == 'canvas') {
+    $app = arg(1);
+  }
   $api = &drupal_static(__FUNCTION__);
   if (isset($api)) {
     return $api;
@@ -105,7 +126,7 @@ function canvas_api($app = FALSE) {
   if (!array_key_exists($app, $apps)) {
     return FALSE;
   }
-  require_once 'sites/all/libraries/facebook.php';
+  require_once 'facebook.php';
   try {
     $api = new Facebook(array(
       'appId' => $apps[$app]['appid'],
@@ -113,12 +134,13 @@ function canvas_api($app = FALSE) {
       'cookie' => TRUE,
     ));
     $api->path_prefix = $app;
-    $api->my_appid = $apps[$app]['appid'];
-    $api->style = array_key_exists('style', $apps[$app])?$apps[$app]['style']:FALSE;
-    $api->script = array_key_exists('script', $apps[$app])?$apps[$app]['script']:FALSE;
+    $api->appid = $apps[$app]['appid'];
+    $api->theme = $apps[$app]['theme'];
+    $api->language = $apps[$app]['language'];
     return $api;
   }
   catch (Exception $exc) {
+    dpm($exc);
   }
   return FALSE;
 }
@@ -149,8 +171,8 @@ function canvas_url_outbound_alter(&$path, &$options, $original_path) {
 /**
  * Check if user authorized page.
  */
-function canvas_authorized($perms = '') {
-  $facebook = social_facebook_initialize();
+function canvas_authorized() {
+  $facebook = canvas_api();
   if (!$facebook) {
     return FALSE;
   }
@@ -171,16 +193,14 @@ function canvas_authorized($perms = '') {
 /**
  * Check if the user likes the page.
  */
-function canvas_likes($app = FALSE) {
-  if($facebook = social_facebook_initialize($app)) {
+function canvas_likes() {
+  if($facebook = canvas_api()) {
+    $data = array();
     try {
       $data = $facebook->getSignedRequest();
     }
     catch (Exception $exc) {
-      return TRUE;
-    }
-    if (!$data) {
-      return TRUE;
+      dpm($exc->getMessage());
     }
     if (array_key_exists('page', $data) && $data['page']['liked']) {
       return TRUE;
@@ -189,6 +209,9 @@ function canvas_likes($app = FALSE) {
       return FALSE;
     }
   }
+  else {
+    return TRUE;
+  }
   return FALSE;
 }
 
@@ -196,25 +219,7 @@ function canvas_likes($app = FALSE) {
  * Implements hook_custom_theme().
  */
 function canvas_custom_theme() {
-  $app = arg(0);
-  if ($app == 'fbaccess') {
-    $app = arg(1);
-  }
-  if ($facebook = canvas_api($app)) {
-    if ($facebook->getSignedRequest()) {
-      drupal_add_css(drupal_get_path('module', 'canvas') . '/canvas.css');
-      drupal_add_js(drupal_get_path('module', 'canvas') . '/canvas.js');
-      if ($facebook->style) {
-        drupal_add_css($facebook->style);
-      } 
-      if ($facebook->script) {
-        drupal_add_js($facebook->script);
-      }
-      return 'facebook';
-    }
-    else {
-    }
-  }
-  else {
+  if ($facebook = canvas_api()) {
+    return $facebook->theme;
   }
 }

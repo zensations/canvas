@@ -25,3 +25,7 @@ a.light {
 a:hover {
   text-decoration:underline;
 }
+
+.breadcrumb {
+  display:none;
+}
