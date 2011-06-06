@@ -1,5 +1,10 @@
 <?php
 /**
+ * @file
+ * canvas module file
+ */
+
+/**
  * Implements hook_menu().
  */
 function canvas_menu() {
