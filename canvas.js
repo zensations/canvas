@@ -8,7 +8,7 @@
         cookie : true, // enable cookies to allow the server to access the session
         xfbml  : true  // parse XFBML
       });
-      FB.Canvas.setAutoResize(); 
+      FB.Canvas.setAutoResize();
     }
   };
 })(jQuery);
