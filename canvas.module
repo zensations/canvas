@@ -171,6 +171,24 @@ function canvas_init() {
   }
   $facebook = canvas_api();
   if ($facebook) {
+    $languages = language_list();
+    $sr = $facebook->getSignedRequest();
+    if (!empty($sr)) {
+      list($fb_lang, $fb_special) = explode('_', $sr['user']['locale']);
+      global $language;
+      if (array_key_exists($fb_lang, $languages)) {
+        $language = $languages[$fb_lang];
+      }
+      if (!array_key_exists('page', $sr)) {
+        $protocol = 'http://';
+        if ($_SERVER['SERVER_PORT'] == 443) {
+          $protocol = 'https://';
+        }
+        drupal_add_js('jQuery(document).ready(function () {
+          top.location.href = "' . $protocol . 'www.facebook.com/' . $facebook->page . '?sk=app_' . $facebook->getAppId() . '";
+        });', array('type' => 'inline', 'weight' => 0));
+      }
+    }
     drupal_add_js($facebook->getJavascriptUrl(), array('type' => 'external'));
     drupal_add_js(drupal_get_path('module', 'canvas') . '/canvas.js');
     drupal_add_js(array('canvas' => array('appid' => $facebook->getAppId())), 'setting');
@@ -255,7 +273,7 @@ function canvas_in_canvas() {
  */
 function canvas_authorized() {
   // skip for administrators
-  //if (user_access('access canvas pages')) { return TRUE; }
+  if (user_access('access canvas pages')) { return TRUE; }
   $facebook = canvas_api();
   if ($facebook && $facebook->getUser()) {
     return TRUE;
@@ -287,4 +305,13 @@ function canvas_custom_theme() {
   if ($facebook = canvas_api()) {
     return $facebook->theme;
   }
+}
+
+/**
+ * Implements hook_rdf_namespaces().
+ */
+function canvas_rdf_namespaces() {
+  return array(
+    'fb'  => 'http://www.facebook.com/2008/fbml',
+  );
 }
