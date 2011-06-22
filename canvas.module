@@ -275,8 +275,11 @@ function canvas_authorized() {
   // skip for administrators
   if (user_access('access canvas pages')) { return TRUE; }
   $facebook = canvas_api();
-  if ($facebook && $facebook->getUser()) {
-    return TRUE;
+  try {
+    if ($facebook && $facebook->api('/me')) {
+      return TRUE;
+    }
+  } catch (FacebookApiException $e) {
   }
   return FALSE;
 }
@@ -302,8 +305,14 @@ function canvas_likes() {
  * Implements hook_custom_theme().
  */
 function canvas_custom_theme() {
-  if ($facebook = canvas_api()) {
-    return $facebook->theme;
+  $app = arg(0);
+  if ($app == 'canvas') {
+    $app = arg(1);
+  }
+  $apps = canvas_get_apps();
+
+  if (array_key_exists($app, $apps) && array_key_exists('theme', $apps[$app])) {
+    return $apps[$app]['theme'];
   }
 }
 
