@@ -9,7 +9,7 @@
  */
 function canvas_menu() {
   $items = array();
-  $items['canvas/overview'] = array(
+  $items['admin/canvas/overview'] = array(
     'title' => t('Canvas Apps'),
     'page callback' => 'canvas_app_overview',
     'access arguments' => array('access canvas pages'),
@@ -311,7 +311,7 @@ function canvas_custom_theme() {
   }
   $apps = canvas_get_apps();
 
-  if (array_key_exists($app, $apps) && array_key_exists('theme', $apps[$app])) {
+  if (canvas_in_canvas() && array_key_exists($app, $apps) && array_key_exists('theme', $apps[$app])) {
     return $apps[$app]['theme'];
   }
 }
